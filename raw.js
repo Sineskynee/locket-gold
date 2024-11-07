@@ -10,9 +10,9 @@ var ua = $request.headers["User-Agent"] || $request.headers["user-agent"],
 var currentDate = new Date();
 var billingDate = currentDate.toISOString().split('.')[0] + 'Z';
 
-// Set expires date to one month from billing date
+// Set expires date to one year from billing date
 var expiresDateObj = new Date();
-expiresDateObj.setMonth(expiresDateObj.getMonth() + 1);
+expiresDateObj.setFullYear(expiresDateObj.getFullYear() + 1);
 var expiresDate = expiresDateObj.toISOString().split('.')[0] + 'Z';
 
 // Message
