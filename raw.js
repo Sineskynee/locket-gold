@@ -6,19 +6,19 @@ const mapping = {
 var ua = $request.headers["User-Agent"] || $request.headers["user-agent"],
     obj = JSON.parse($response.body);
 
-// Set billing date to today's date
+// Thiết lập billing date thành ngày hôm nay
 var currentDate = new Date();
 var billingDate = currentDate.toISOString().split('.')[0] + 'Z';
 
-// Set expires date to one year from billing date
+// Thiết lập expires date thành một năm sau billing date
 var expiresDateObj = new Date();
 expiresDateObj.setFullYear(expiresDateObj.getFullYear() + 1);
 var expiresDate = expiresDateObj.toISOString().split('.')[0] + 'Z';
 
-// Message
+// Thông báo
 obj.Attention = "Chúc mừng bạn! Vui lòng không bán hoặc chia sẻ cho người khác!";
 
-var locket02 = {
+var locketSubscription = {
   is_sandbox: false,
   ownership_type: "PURCHASED",
   billing_issues_detected_at: null,
@@ -31,7 +31,7 @@ var locket02 = {
   store: "app_store"
 };
 
-var locket01 = {
+var locketEntitlement = {
   grace_period_expires_date: null,
   purchase_date: billingDate,
   product_identifier: "com.locket02.premium.yearly",
@@ -40,13 +40,21 @@ var locket01 = {
 
 const match = Object.keys(mapping).find(e => ua.includes(e));
 if (match) {
-  let [e, s] = mapping[match];
-  s ? (locket01.product_identifier = s, obj.subscriber.subscriptions[s] = locket02) 
-    : obj.subscriber.subscriptions["com.locket02.premium.yearly"] = locket02;
-  obj.subscriber.entitlements[e] = locket01;
+  let [entitlementKey, subscriptionKey] = mapping[match];
+  if (subscriptionKey) {
+    locketEntitlement.product_identifier = subscriptionKey;
+    obj.subscriber.subscriptions[subscriptionKey] = locketSubscription;
+  } else {
+    obj.subscriber.subscriptions["com.locket02.premium.yearly"] = locketSubscription;
+  }
+  obj.subscriber.entitlements[entitlementKey] = locketEntitlement;
 } else {
-  obj.subscriber.subscriptions["com.locket02.premium.yearly"] = locket02;
-  obj.subscriber.entitlements.pro = locket01;
+  obj.subscriber.subscriptions["com.locket02.premium.yearly"] = locketSubscription;
+  obj.subscriber.entitlements.pro = locketEntitlement;
 }
+
+// Đảm bảo entitlements và subscriptions được khởi tạo đúng cách
+if (!obj.subscriber.entitlements) obj.subscriber.entitlements = {};
+if (!obj.subscriber.subscriptions) obj.subscriber.subscriptions = {};
 
 $done({body: JSON.stringify(obj)});
