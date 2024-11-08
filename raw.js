@@ -5,18 +5,13 @@ const mapping = {
 
 var ua = $request.headers["User-Agent"] || $request.headers["user-agent"],
     obj = JSON.parse($response.body);
-
-// Thiết lập billing date thành ngày hôm nay
 var currentDate = new Date();
 var billingDate = currentDate.toISOString().split('.')[0] + 'Z';
-
-// Thiết lập expires date thành một năm sau billing date
 var expiresDateObj = new Date();
 expiresDateObj.setFullYear(expiresDateObj.getFullYear() + 1);
 var expiresDate = expiresDateObj.toISOString().split('.')[0] + 'Z';
 
-// Thông báo
-obj.Attention = "Chúc mừng bạn! Vui lòng không bán hoặc chia sẻ cho người khác!";
+obj.Attention = "Địt mẹ locket";
 
 var locketSubscription = {
   is_sandbox: false,
@@ -53,7 +48,6 @@ if (match) {
   obj.subscriber.entitlements.pro = locketEntitlement;
 }
 
-// Đảm bảo entitlements và subscriptions được khởi tạo đúng cách
 if (!obj.subscriber.entitlements) obj.subscriber.entitlements = {};
 if (!obj.subscriber.subscriptions) obj.subscriber.subscriptions = {};
 
