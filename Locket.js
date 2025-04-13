@@ -1,71 +1,60 @@
-var request = $request;
-
-// Lấy thời gian hiện tại
-const now = new Date();
-const nowISO = now.toISOString();
-const nowMs = now.getTime();
-
-const options = {
-    url: "https://api.revenuecat.com/v1/product_entitlement_mapping",
-    headers: {
-      'Authorization': request.headers["authorization"],
-      'X-Platform': 'iOS',
-      'User-Agent': request.headers["user-agent"]
-    }
+const mapping = {
+  '%E8%BD%A6%E7%A5%A8%E7%A5%A8': ['vip+watch_vip'],
+  'Locket': ['Gold']
 };
 
-$httpClient.get(options, function(error, newResponse, data) {
+var ua = $request.headers["User-Agent"] || $request.headers["user-agent"],
+    obj = JSON.parse($response.body);
 
-  const ent = JSON.parse(data);
+// Thiết lập billing date thành ngày hôm nay
+var currentDate = new Date();
+var billingDate = currentDate.toISOString().split('.')[0] + 'Z';
 
-  // Sửa các ngày trong jsonToUpdate thành ngày hôm nay
-  let jsonToUpdate = {
-    "request_date_ms": nowMs,
-    "request_date": nowISO,
-    "subscriber": {
-      "entitlement": {},
-      "first_seen": nowISO,
-      "original_application_version": "9692",
-      "last_seen": nowISO,
-      "other_purchases": {},
-      "management_url": null,
-      "subscriptions": {},
-      "entitlements": {},
-      "original_purchase_date": nowISO,
-      "original_app_user_id": "70B24288-83C4-4035-B001-573285B21AE2",
-      "non_subscriptions": {}
-    }
-  };
+// Thiết lập expires date thành một năm sau billing date
+var expiresDateObj = new Date();
+expiresDateObj.setFullYear(expiresDateObj.getFullYear() + 1);
+var expiresDate = expiresDateObj.toISOString().split('.')[0] + 'Z';
 
-  const productEntitlementMapping = ent.product_entitlement_mapping;
+// Thông báo
+obj.Attention = "Chúc mừng bạn! Vui lòng không bán hoặc chia sẻ cho người khác!";
 
-  for (const [entitlementId, productInfo] of Object.entries(productEntitlementMapping)) {
-    const productIdentifier = productInfo.product_identifier;
-    const entitlements = productInfo.entitlements;
+var locketSubscription = {
+  is_sandbox: false,
+  ownership_type: "PURCHASED",
+  billing_issues_detected_at: null,
+  period_type: "normal",
+  expires_date: expiresDate,
+  grace_period_expires_date: null,
+  unsubscribe_detected_at: null,
+  original_purchase_date: billingDate,
+  purchase_date: billingDate,
+  store: "app_store"
+};
 
-    for (const entitlement of entitlements) {
-      jsonToUpdate.subscriber.entitlements[entitlement] = {
-        "purchase_date": nowISO,
-        "original_purchase_date": nowISO,
-        "expires_date": "9692-01-01T01:01:01Z",  // Thời hạn vẫn giữ như cũ
-        "is_sandbox": false,
-        "ownership_type": "PURCHASED",
-        "store": "app_store",
-        "product_identifier": productIdentifier
-      };
+var locketEntitlement = {
+  grace_period_expires_date: null,
+  purchase_date: billingDate,
+  product_identifier: "com.locket02.premium.yearly",
+  expires_date: expiresDate
+};
 
-      // Thêm product identifier vào subscriptions
-      jsonToUpdate.subscriber.subscriptions[productIdentifier] = {
-        "expires_date": "9692-01-01T01:01:01Z",  // Thời hạn vẫn giữ như cũ
-        "original_purchase_date": nowISO,
-        "purchase_date": nowISO,
-        "is_sandbox": false,
-        "ownership_type": "PURCHASED",
-        "store": "app_store"
-      };
-    }
+const match = Object.keys(mapping).find(e => ua.includes(e));
+if (match) {
+  let [entitlementKey, subscriptionKey] = mapping[match];
+  if (subscriptionKey) {
+    locketEntitlement.product_identifier = subscriptionKey;
+    obj.subscriber.subscriptions[subscriptionKey] = locketSubscription;
+  } else {
+    obj.subscriber.subscriptions["com.locket02.premium.yearly"] = locketSubscription;
   }
+  obj.subscriber.entitlements[entitlementKey] = locketEntitlement;
+} else {
+  obj.subscriber.subscriptions["com.locket02.premium.yearly"] = locketSubscription;
+  obj.subscriber.entitlements.pro = locketEntitlement;
+}
 
-  body = JSON.stringify(jsonToUpdate);
-  $done({body});
-});
+// Đảm bảo entitlements và subscriptions được khởi tạo đúng cách
+if (!obj.subscriber.entitlements) obj.subscriber.entitlements = {};
+if (!obj.subscriber.subscriptions) obj.subscriber.subscriptions = {};
+
+$done({body: JSON.stringify(obj)});
